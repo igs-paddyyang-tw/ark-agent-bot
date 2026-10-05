@@ -13,6 +13,21 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.3.3 (2026-10-05)
+
+### 🔒 降級路徑套用 chat 工具白名單（審查 P1-3）
+
+CLI 不可用時改走 Gemini `agent_loop` 的三個降級點（`bot/router.py` `_agent_fallback`、
+`bot/handlers.py` `/chat` 指令、自然語言 fallback）呼叫 `agent_loop` 時**都沒帶 `allowed_tools`**
+（= `None` = 全部工具，含有副作用、opt-in 的 `run_script`）。結果：降級這條弱化路徑的工具權限
+**反而比正常快答路徑大** —— `run_script` 的 opt-in 保護在降級時失效。
+
+- 三個降級點全改帶 `allowed_tools=modes.chat.tools`（預設唯讀三工具 search_wiki/recall_memory/web_search）。
+- `agent_loop(allowed_tools=None)` 的「全部」語意**保留給 CLI 原生 agent**（實際不經此函式）；
+  修正原 docstring 誤導註解（「fallback 走全部工具」是刻意設計卻是漏洞）。
+- 守門：行為測試（router fallback 實際傳 chat.tools、且不為 None）+ AST 掃描
+  （router.py／handlers.py 任何 `agent_loop()` 呼叫缺 `allowed_tools` 即紅）；反證兩方向紅。
+
 ## 1.3.2 (2026-09-30)
 
 ### 🔧 bot 自我更新機制（移植自 team）+ 各自的更新來源
