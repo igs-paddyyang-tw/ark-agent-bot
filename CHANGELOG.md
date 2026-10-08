@@ -13,6 +13,23 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.4.1 (2026-10-08)
+
+### 🔧 1.4.0 完整性修補 + preflight 可略過刻意不需要的探針
+
+- **補提交 1.4.0 遺漏**（`5a1e921`）：`router.py` 已呼叫 `action_space.needs_generation_question / route_chat`，
+  但實作與 `__init__` 版號一直留在開發源工作區 → **從 git 打包的 1.4.0 進快答即 AttributeError**。
+  1.4.0 wheel 若是從 git 樹 build 的，請直接換 1.4.1。
+- **`preflight.skip`（新設定，純新增）**：`bot.yaml`
+  ```yaml
+  preflight:
+    skip: [mcp_json]     # 這個部署刻意不掛 MCP
+  ```
+  被略過的探針記成 `skipped`（ok、不進 degraded），`/health` 的 preflight 區塊多 `skipped` 清單、`counts.skipped`。
+  名稱打錯 → log warning 並列出可用名稱。沒設 skip 時行為與 1.4.0 完全相同。
+  病例：nana-bot 的 `.kiro/settings/mcp.json` 刻意是空 → 1.4.0 起 `/health` 永遠 degraded。
+- 測試：`test_run_chat_jev` 頁尾三條跟上 dc50b89 口語化文字；`test_preflight` 加 `TestPreflightSkip` 5 條（含反證：skip 不遮其他失敗、無 skip 仍 degraded）。
+
 ## 1.3.3 (2026-10-05)
 
 ### 🔒 降級路徑套用 chat 工具白名單（審查 P1-3）
