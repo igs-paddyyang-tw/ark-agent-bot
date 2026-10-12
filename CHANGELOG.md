@@ -13,6 +13,18 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.4.3 (2026-10-12)
+
+### 🔴 修 consolidate 記憶蒸餾三個資料安全缺陷（1.4.2 漏發）
+
+- **截斷後整份覆寫 → 遺失**：只把 `memory_content[:2000]` 交給 LLM，卻用回覆整份覆寫
+  `memory.md` → 超過 2000 字的後半段直接消失（nana 實測遺失 9 條，已從備份補回）。
+  改為整份交給 LLM；`memory.md` > 12000 字回 `too_large` 不動檔，daily 上限 16000 字。
+- **根目錄 agent 讀錯目錄**：agent 名稱為 `""` 時讀 `agents/memory/`，永遠 `no_data`
+  → bot 自動蒸餾形同虛設。`""` 與 `_default` 都改讀根 `memory/`。
+- **自動 commit 夾帶別人已 stage 的檔**：`git commit` 改帶 pathspec（只 commit `memory.md`）。
+- **守門**：`test_consolidate_safety.py` 5 條。
+
 ## 1.4.1 (2026-10-08)
 
 ### 🔧 1.4.0 完整性修補 + preflight 可略過刻意不需要的探針
