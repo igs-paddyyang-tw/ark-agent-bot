@@ -13,6 +13,34 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.4.4 (2026-10-14)
+
+### 🔴 系統分析 P1 四項修復
+
+來源：`docs/reports/2026-10-14-ark-bot-agent-system-analysis.md` §7 #1~#4。
+
+- **併發**：PTB 開 `concurrent_updates(8)` —— 之前一則 Agent 訊息（最長 timeout × 2）期間，
+  `/status`、按鈕、其他使用者全部卡住。同一使用者仍依序處理（`handle_message` per-user lock，
+  session 與 `--resume` 假設一次一則）。每日自動 consolidate 改在 await 前佔位，避免兩人同時觸發兩份。
+- **上傳先驗權限**：`handle_file` 在下載**之前**檢查白名單與群組策略（看 caption）——
+  之前白名單只在 `handle_message`（下載落地之後）檢查，白名單外的人能灌 20MB 檔案進磁碟。
+- **send() 逾時不再重複執行**：等待上限改為 `timeout × 2 + 30`（`_execute` 撞 resume 鎖會降級重跑），
+  逾時判**不可重試**；worker 取到等待者已放棄的 future 直接略過 ——
+  之前兩者同值且可重試，第一次還在跑、重試又排一份，同一則跑兩次並互撞 session 鎖（10-09 journal 實證）。
+- **工具權限在執行端硬擋**：`ToolRegistry.dispatch(allowed=...)` 拒絕白名單外的工具，
+  `agent_loop` 傳入實際送給 LLM 的那份 schema 名單（同源不漂移）。`requires_approval` 首次有消費者：
+  必須被白名單明寫才可執行，`None`（全開）時 schema 也不送出 —— 之前白名單只過濾 schema，
+  該欄位全庫無人讀取（宣告了沒接上）。
+- **守門**：`tests/ark_bot_agent/test_p1_hardening_144.py` 8 條；退回舊碼 8 條全紅（反證）。
+
+### 🔧 consolidate 不再把失敗回報成成功（原 Unreleased，1.4.3 發版後提交）
+
+- **LLM 失敗被吞成 `no_change`**：`simple_chat` 失敗（缺 `GEMINI_API_KEY`、網路、配額）回 `None`，
+  舊碼與「沒有新事實」同樣回 `no_change` → `/consolidate` 顯示「ℹ️ 無新的持久事實」，壞掉看起來正常。
+  改回 `status: error`，`/consolidate` 顯示 ❌；每日自動蒸餾遇 `error` / `too_large` 寫 warning log。
+- **`committed` 寫死 True**：改為 git commit 的實際結果（非 git 目錄、commit 失敗 → False）。
+- **守門**：`test_consolidate_safety.py` +3 條（2 條反證：撤掉修正即紅）。
+
 ## 1.4.3 (2026-10-12)
 
 ### 🔴 修 consolidate 記憶蒸餾三個資料安全缺陷（1.4.2 漏發）
