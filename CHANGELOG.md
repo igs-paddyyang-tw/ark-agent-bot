@@ -13,6 +13,101 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.4.5 (2026-10-15)
+
+### 🔴 P0 資安：memory API 未驗證 + 路徑穿越（1.4.4 以前所有開 web_ui 的部署）
+
+- **未驗證**：`/api/v1/memory/*`、`/api/v1/skills/{list,pending,approve,reject}` 共 8 個端點**從未掛驗證**
+  （其他 router 逐路由掛 `Depends(require_auth)`，memory router 沒掛）。nana/ninja 綁 `0.0.0.0` → 區網可直接呼叫。
+  → router 層 `dependencies=[Depends(require_auth)]`；寫入類（consolidate／rebuild-index／approve／reject）要 admin
+- **路徑穿越**：`GET /api/v1/memory/daily` 的 `agent`／`date` 直接拼進路徑 →
+  實測無 token 以 `date=../../../../README` 讀出部署根目錄的 README.md（任意 `.md` 可讀）。
+  → `agent` 限 `[A-Za-z0-9_-]`、`date` 限 `YYYY-MM-DD`，再以 `safe_join` 確認落點仍在 `daily/`
+- A2A router 掛載時補 `dependencies=[Depends(require_auth)]`（各部署目前皆關，避免開啟即裸奔）
+- **守門**：`test_api_auth_coverage.py` 15 條（掃描每個 `/api/*` 路由必須有驗證；穿越 4 種變形 → 400；
+  無 token → 401）；以修正前程式碼反證 14 紅
+- **升級建議**：有開 `features.web_ui` 的部署**盡快升級**
+
+### 🌐 內建預設 Web 樣板（ninja 回報 `/` 500）
+
+- **根因**：開發源從未有 `src/ark_bot_agent/templates/`，`package-data` 的 `templates/**/*` 對到 0 個檔且不報錯
+  → **所有版本**的 wheel 都沒有樣板；nana 靠自帶副本才沒事。`assets/**/*` 同樣對不到 → 移除宣告
+- 6 頁（`/`、`/admin`、`/wiki`、`/builder`、`/graph`、`/api-docs`）收為套件內建（來源 nana，`api-docs` 去掉寫死的 `localhost:8000`）
+- 新增 `paths.resolve_template()`：**逐檔** fallback（消費端同名檔優先、否則內建）——
+  之前 `get_templates_dir()` 整個目錄二選一，ninja 的 `templates/` 只有別的檔 → 就算有內建也 500
+- 6 個路由收成 `_render_page()`：缺檔回 **404** 友善頁（`_missing.html`），不再 500；每次請求解析，加檔不必重啟
+- **守門**：`test_web_templates.py` 8 條（package-data 每個 glob 必須對到檔、路由引用的樣板內建都要有、
+  逐檔 fallback、缺檔 404、內建樣板不寫死 host）；四種反證皆紅
+- 報告：`docs/reports/2026-10-15-bot-default-web-templates.md`
+
+### 🔴 kiro-cli session 釘選：接續自己的對話，不再用 `--resume`
+
+**根因**（`docs/issues/2026-10-14-bot-resume-shared-cwd-session.md`）：`--resume` = 「該目錄最近的對話」，
+paddy-bot 的 agent cwd（專案根）與 team daemon 的 paddy-agent、IDE 的 kiro-cli 共用 →
+30 天 44 次中 **20 次** `load_session failed`；載入成功時還可能接到**別人的對話**。
+
+- 新模組 `agent/session_store.py`：session id 存 `state/kiro_sessions.json`（key = cwd + agent_id）
+- `spawn_cli(session_key=...)`：已知 id → `--resume-id <id>`；未知 → **開新對話**（不用 `--resume`），
+  跑完以 `kiro-cli chat -l -f json` 依「標題 = 訊息開頭、更新時間在本次之後」取回新 id（約 5 秒，只在未知時付）
+- 釘選的 id 載入失敗 → 整對移除 `--resume-id` 開新對話重跑並重新釘選
+- 常駐池與 fallback 路徑共用同一把 key（`agent_id`；池的 `AgentProcess.name` 是 `<id>-agent`）
+- **守門**：`test_session_pinning.py` 7 條；反證兩種（不釘選 → 2 紅、不比標題 → 1 紅）。
+  **實機**（kiro-cli 2.31.0）：第一則釘選新 session、第二則 `--resume-id` 正確答出第一則的暗號
+- ⚠️ 升級後第一則會開新對話（先前沒有自己的 id 可接）
+
+### 🔧 claude backend 補齊：權限、MCP、對話續接
+
+`bot.yaml` 的 `backend.cli: claude` 原本只組出 `claude -p <訊息>`：工具一律被拒、沒有 MCP、每則都是新對話。
+- `--permission-mode bypassPermissions`（對等 kiro 的 `--trust-all-tools`）
+- `--mcp-config <cwd>/.kiro/settings/mcp.json`（kiro 格式 claude 直接吃）
+- session 釘選：未知 → `--session-id <新 uuid>`；已知 → `--resume <id>`；`No conversation found` → 換新 uuid 重跑並重新釘選。
+  key 為 `<agent>@claude`，與 kiro 的 id 分開
+- 訊息前加 `--`（`--mcp-config` 吃多值，否則訊息會被當成設定檔）
+- **實機**（claude 2.1.300）：兩輪記得暗號、bypass 下 shell 成功、`--mcp-config` 呼叫 team MCP 成功
+- **守門**：`test_session_pinning.py` +4 條（舊 claude 分支 3 紅）
+
+### 🔧 系統分析 P2/P3 小項修復
+
+- **#8 回覆截斷保留開頭**：4 處 `reply[-3000:]`（保留結尾、切掉開頭——結論先行的回覆恰好丟掉結論）
+  → `_truncate_reply()` 保留開頭並註明「已截斷」
+- **#11 run_script 子進程環境**：剝掉控制 bot 本身的憑證（`TELEGRAM_*`、`GITHUB_TOKEN`、`GH_TOKEN`、
+  `TYPESAFE_API_KEY`）；腳本合理需要的 API key（Gemini、DB 等）保留
+- **#12 PTB 全域 error handler**：TG 暫時性網路錯誤（502、逾時）只記一行；其他保留 traceback
+- **#13 模式切換按鈕**：先驗白名單；每條路徑只 answer 一次（之前開頭先 answer()，
+  後面的錯誤提示被 TG 拒絕、從未顯示）
+- **#14 群組 `@` 點名**：`@` 開頭只在對象是成員 id／代號時才算點名 —— 之前群組裡 @ 任何人
+  bot 都會跳出來回「不認識 X」。取不到成員表時退回舊行為
+- **#15 kiro 指令加 `--`**：訊息以 `-` 開頭會被當旗標（實測 `-h 是什麼` → kiro-cli 印出自己的 help）；
+  resume 旗標的改寫只動 `--` 之前，訊息原文剛好是 `-r` 也不會被剝掉
+- **#19 `/health`、`/api/v1/health` 回報 `version`**（執行中版本）—— 「已裝」與「已載入」的落差要看得出來
+- 套件 docstring 更新為兩種模式（1.4.0 已移除內嵌 Team 模式）
+- **守門**：`test_p2p3_hardening_145.py` 10 條 + `test_group_policy` 1 條；以修正前程式碼反證 11 條全紅
+
+### 🔴 其餘 async 內阻塞 I/O 全數移出事件迴圈（系統分析 #5/#6）
+
+- **Jev**（同步 urllib，timeout 30 秒，每則快答都呼叫）：`run_chat` 改 `await asyncio.to_thread(self._jev_route, ...)`
+- **wiki 搜尋 / run_script**（同步 subprocess，最長 60／120 秒）、**consolidate 的 git**、**/publish 的 git**：
+  改 `await asyncio.to_thread(subprocess.run | publish_repo, ...)` —— 例外、回傳值與逾時殺子進程語意不變
+- **守門**：`test_no_blocking_in_async.py`（AST：外圍是 `async def` 的 Call 不得是 `subprocess.run`／`urlopen`／
+  `time.sleep`／本套件已知同步阻塞函式）；以修正前程式碼反證，恰好抓出這 6 處
+- `test_context_governor_w0` 的收屍守門跟著架構移位（`spawn_cli._run` → 模組層 `_spawn_once`）——
+  上一個 commit（session 釘選）搬了收屍點卻漏改此守門，根層測試在 bot 子集外沒跑到
+
+### 🔴 Gemini 呼叫不再凍結事件迴圈
+
+- `GeminiProvider.chat` / `describe_image` 與 `web_search` 改用 `client.aio.models.generate_content` ——
+  之前 async 函式裡呼叫**同步** `models.generate_content`，每次 LLM 呼叫期間整個事件迴圈停住
+  （2026-10-15 實機：consolidate 卡 37 秒，背景 task 也救不了；快答模式每則都中）。anthropic/openai 本來就用 Async client。
+- **實測**：LLM 呼叫期間 0.1 秒心跳 —— 舊版 0 次（全凍）、新版與經過時間相符。
+- **守門**：`test_no_sync_gemini.py`（AST 掃全套件，`X.models.generate_content` 的 X 必須是 `.aio`；改回同步即紅）。
+- 釘選後補一行 log 說明實際決定（上游「Executing」印的是釘選前的指令，含 `--resume`，易誤讀）。
+
+### ⚡ 當日首則訊息不再等 consolidate
+
+- `_handle_message` 改用 `_spawn_background()` 背景跑每日自動蒸餾（保留 task 強引用防 GC）——
+  之前同步 await，2026-10-14 實測首則訊息多等 **33 秒**才開始回覆。蒸餾讀「昨天」的 daily，與本則回覆無資料相依。
+- **守門**：`test_consolidate_background.py` 2 條（AST 驗不得同步 await；改回 await 即紅）。
+
 ## 1.4.4 (2026-10-14)
 
 ### 🔴 系統分析 P1 四項修復
