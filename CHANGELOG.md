@@ -13,6 +13,23 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.5.0 (2026-10-15)
+
+### ✨ 逐 agent 指定 CLI 與模型（與 ark_team_agent 1.12.0 同詞彙）
+
+```yaml
+# agents.yaml
+paddy:
+  backend: claude-code   # 只有這個 agent 改走 Claude Code；其他沿用 bot.yaml 的 backend.cli
+  model: deep            # 別名：kiro→claude-opus-4.5／claude→opus
+```
+
+- `agents.yaml` 每個 agent 新增 `backend`、`model`；`bot.yaml` 新增 `models:` 別名表（內建 fast／standard／deep）
+- backend 名稱接受 `kiro`／`kiro-cli`、`claude`／`claude-code`／`claude-cli`、`agy`
+- 新模組 `agent/backend_resolve.py`：常駐池與 fallback 共用同一份解析結果；內建別名與 team 由共用測試向量鏡像守門
+- 設定錯誤的 agent **不啟動、其餘照常**；呼叫它回「設定錯誤」（不可重試）；新 preflight 探針 `agent_backends`（P1）
+- 相容：agent 未寫新欄位時 backend／model 與 1.4.5 相同；fallback 路徑仍為 `model=auto`
+
 ## 1.4.5 (2026-10-15)
 
 ### 🔴 P0 資安：memory API 未驗證 + 路徑穿越（1.4.4 以前所有開 web_ui 的部署）
