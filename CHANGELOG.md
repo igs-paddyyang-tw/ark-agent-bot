@@ -13,6 +13,21 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.5.1 (2026-10-16)
+
+### 🔴 長回覆完整版不再寫進 `knowledge/raw/`
+
+- **問題**：`handlers._save_reply_to_raw` 把 > 200 字的回覆存成 `knowledge/raw/<agent>-<日期>-<query>.md`（`type: source`）——
+  違反 BRAIN 紅線「對話記錄只進 memory，絕不進 knowledge」；根層 `knowledge/raw/` 也不屬任何知識櫃。
+  nana-bot 實測 3 份，其中一份內容是「處理失敗（agent 無輸出）」
+- **修法**：改名 `_save_reply_to_output`，落 `output/replies/`（`paths.get_output_dir`，一次性產出）；對話沿革仍由 daily log 承接
+- **守門**：`tests/ark_bot_agent/test_reply_not_into_knowledge.py`（行為層驗落點 + 掃描層禁舊寫法）
+- **部署端**：既有 `knowledge/raw/*-<日期>-*.md`（`tags: [reply, …]`）需手動清，套件不搬舊檔
+
+### backend 舊值相容（鏡像 ark_team_agent 1.12.1）
+
+- `backend_resolve` 別名表同步：`kiro` → `kiro-cli`、`claude` → `claude-code`，不分大小寫
+
 ## 1.5.0 (2026-10-15)
 
 ### ✨ 逐 agent 指定 CLI 與模型（與 ark_team_agent 1.12.0 同詞彙）
