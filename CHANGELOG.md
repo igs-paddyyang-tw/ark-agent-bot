@@ -13,6 +13,16 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.5.2 (2026-10-16)
+
+### 🔐 team daemon API token（配合 ark-team-agent 1.13.0）
+
+- `team_backend` 新增 `api_token`／`api_token_file`（未設時讀 env `ARK_TEAM_API_TOKEN`），
+  `TeamClient` 送 `X-Ark-Team-Token` header。team 端預設 `warn` 模式，未設 token 照常可用；
+  team 切 `enforce` 後未設 token 的 dispatch 會被 401
+- 建議 `api_token_file` 指向 team home 的 `state/api_token`（不要把 token 明文寫進 bot.yaml）
+- `TeamClient.from_config()`：url／timeout／token 一次帶齊（call_team、router 三處改用）
+
 ## 1.5.1 (2026-10-16)
 
 ### 🔴 長回覆完整版不再寫進 `knowledge/raw/`
