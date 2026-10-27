@@ -13,6 +13,16 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.5.4 (2026-10-27)
+
+### 🔧 TG 一鍵更新：venv 沒有 pip 時改用 uv
+
+- nana-bot 的 venv（`kiro-cli/.venv`）沒有 pip，原本的一鍵更新在那裡必失敗（2026-10-27 實測）。
+  改為：venv 有 pip 用 pip，沒有就用 PATH 上的 uv，兩者都沒有就明確回報失敗（服務不重啟）
+- 安裝不再加 `--no-deps`（新版多了相依會缺件）；裝完在子程序確認 venv 版本確實是目標版才回成功
+- 規則與 ark-team-agent 1.13.4 的 deploy 引擎相同（bot 不得 import team，所以各寫一份）
+- 守門：`tests/test_deploy_m3m4.py::test_bot_updater_uses_uv_without_pip`
+
 ## 1.5.3 (2026-10-20)
 
 ### 🔧 回覆裡的指令／算式不再被斜體規則吃掉
