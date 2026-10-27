@@ -13,6 +13,38 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.5.6 (2026-10-27)
+
+### 🐛 消費端回饋核對修復（v1.5.3 三份報告，P0+P1）
+
+> 完整核對說明：`docs/reports/2026-10-27-bot-consumer-feedback-reply.md`
+> 誤判項（A4 設計決策、Q4 過時回報）**不動碼**，見上方文件。
+
+**P0 — 架構缺口**
+
+- **R1 快答走 kiro CLI 分支**（`router.py`）：`_advanced_generate` 補上 kiro 路徑
+  （`_advanced_generate_kiro`），走 `fresh=True` one-shot，不帶對話歷史不汙染 session。
+  啟用：`.env` 加 `ARK_BOT_CHAT_KIRO=1`（預設關，逐部署開，對齊 1.5.5 的開關策略）
+- **Q3 補 run_skill tool**（`llm/tools/run_skill.py`）：新增 tool 對接
+  `skills/registry.invoke()`，讓快答能呼叫 BaseSkill 執行型 skill（20 個 internal）。
+  ⚠️ 預設不在白名單——部分 skill 有寫入副作用，消費端需自行在 `bot.yaml` 加 `run_skill`
+
+**P1 — 真 bug**
+
+- **Q1/Q2 知識庫進 context**：`context_builder.py` + `memory_tools.py` 兩處
+  `include_shared=False` → `True`，shared 知識庫現在進 recall context
+- **A5 session cache 不需重啟**：`SessionManager` 新增 `delete_session(user_id)` 與
+  `reload_session(user_id)`，同步清 cache + DB，外部清 DB 後不用重啟即生效
+
+**P2 — 文件（無碼）**
+
+- R5 Jev 啟用方式說明（機制已備，`jev_enabled: true` + `TYPESAFE_API_KEY` 即可）
+- R3 三模式架構對照表（chat / agent / team）
+- A4 說明 `source_agent=admin-agent` 為設計決策（非 bug）
+- Q4 引導消費端確認安裝版本（`min_chars` 開發源是 3500，非 150）
+
+**守門（各含反證）**：`test_phase1_p0.py`（18 項）+ `test_phase2_p1.py`（6 項）
+
 ## 1.5.5 (2026-10-27)
 
 ### 🐛 agent 模式多輪對話失憶：session 釘選改用 stream-json 自報 sessionId
