@@ -13,6 +13,30 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.5.5 (2026-10-27)
+
+### 🐛 agent 模式多輪對話失憶：session 釘選改用 stream-json 自報 sessionId
+
+- 根因：`session_store.capture()` 靠「kiro session title == 本則訊息開頭」撈新 session id，
+  但 kiro-cli v3 的 title 是 AI 英文摘要、對話中途還會改寫（實測 `"說 hi"` → `"Say Hi In Chinese"`）
+  → 標題比對永遠不成立 → 釘不到 session → 每則開新對話 → agent 模式多輪對話完全失憶
+  （墨驗 aiqa 2026-10-27 回報，P1）
+- 治本解：`--output-format stream-json` 讓每個 ACP 事件自報 `sessionId`，spawn 一啟動即可得
+  —— 從「跑完回頭用脆弱標題比對去猜」改成「本次執行自報 id」。對齊 `ark_team_agent` ACP 的
+  「sessionId 是 `session/new` 回的確定事件，不是猜的」哲學
+- 🔴 **預設關、env `ARK_BOT_KIRO_STREAM_JSON`=1/true/on 逐部署開** —— 對齊 team 的
+  `ARK_KIRO_ACP_ENABLED`「換掉 kiro 執行方式是高風險變更，逐部署開」策略（消費端 kiro-cli
+  版本未必都支援此旗標，不無條件開）
+- 新模組 `agent/stream_json.py` 把「stdout 純文字 → JSON Lines」的契約變更隔離：`spawn_cli`
+  內把 JSON Lines 還原成純文字給下游（output_filter／token 解析／回覆回傳全部零改動），
+  並抽 sessionId 取代標題比對；`capture()` 降為「未開旗標／舊版 kiro」的 fallback
+- 對非 stream-json 輸入 graceful（純文字、降級的空 stdout、未開旗標）原樣回傳，不影響 chat
+  模式（走 SQLite history）、claude 路徑與既有降級邏輯
+- 守門 `tests/ark_bot_agent/test_stream_json_session.py`（22 項，含反證）：多 chunk 聚合還原、
+  sessionId 抽取、開關預設關/env 開、純文字 graceful；移除聚合邏輯會紅
+- ⚠ 待實機驗證：開 `ARK_BOT_KIRO_STREAM_JSON=1` 跑多輪 TG 對話確認「2」能接上上一則編號選項
+  （「機制修好」≠「症狀消失」，本版單測綠，實機多輪連貫待測）
+
 ## 1.5.4 (2026-10-27)
 
 ### 🔧 TG 一鍵更新：venv 沒有 pip 時改用 uv
