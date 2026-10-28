@@ -13,6 +13,24 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.5.7 (2026-10-27)
+
+### ✨ chat.enabled 開關：一行設定停用快答模式
+
+- `ChatModeConfig` 新增 `enabled: bool = True`（預設開，現有部署零影響）
+- `enabled: false` 時三層同步停用：
+  1. `router.py`：chat 模式訊息靜默轉導 agent（Gemini/RAG 完全不觸發）
+  2. `handlers.py`：`/mode` 面板隱藏快答按鈕
+  3. `handlers.py`：面板說明文字不列快答條目
+- 使用場景：只需 Tier 0/1/3（Prompts/Skills/Wiki + TG Bot + Agent）不需 Tier 2（Gemini AI + RAG）的部署
+- 消費端 `bot.yaml` 設定：
+  ```yaml
+  modes:
+    chat:
+      enabled: false
+  ```
+- 守門 `test_chat_enabled_toggle.py`（7 項，含反證）：預設 True、False 轉導 agent、False 隱藏按鈕
+
 ## 1.5.6 (2026-10-27)
 
 ### 🐛 消費端回饋核對修復（v1.5.3 三份報告，P0+P1）
