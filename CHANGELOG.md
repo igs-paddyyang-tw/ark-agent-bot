@@ -13,6 +13,16 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.5.18 (2026-10-28)
+
+### 🔧 /publish 路徑/token 走 .env + 支援 memory/daily（對齊 team 1.13.7）
+
+- `PUBLISH_REPO_DIR`（.env）：明確指定 commit/push 的 repo 目錄，不再假設 home == repo
+- `GITHUB_TOKEN`（.env，選配）：origin 是 https GitHub 時臨時帶入 push 認證，不落地、不進日誌
+- memory/daily 目錄白名單 + `collect_daily_changes()`（`git status -uall` 抓 untracked 新檔）
+- 根目錄沒有某白名單檔 → 跳過，不再 blocked；`..` 路徑段拒絕
+- 測試 26 passed（含移植自 team 的同組向量，兩份實作不漂移）
+
 ## 1.5.17 (2026-10-28)
 
 ### 📖 /help 訊息依 chat 開關調整
