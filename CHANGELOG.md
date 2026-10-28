@@ -13,6 +13,21 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.5.12 (2026-10-27)
+
+### 🐛 chat.enabled=False 完整修補（P1 漏洞 + 單一出口）
+
+**P1 真漏洞修復**
+- `callback_switch_agent`：switch_mode:chat callback 被阻擋（舊訊息殘留按鈕繞過 UI 隱藏問題）
+- 啟動時（post_init）遷移既有 chat session → agent，防止 mode_kind 顯示不一致
+
+**單一出口收斂**
+- `config.py` 新增 `chat_enabled()` 模組層函式
+- handlers / router / main 三處改統一呼叫 `config.chat_enabled()`，不再各自讀 `modes.chat.enabled`
+
+**守門**
+- `test_chat_enabled_guards.py`（11 項）：單一出口、callback 阻擋、/start 文字、選單注冊（各含反證）
+
 ## 1.5.11 (2026-10-27)
 
 ### 🐛 chat.enabled=False 時隱藏 TG 選單 /mode + 阻擋指令執行
