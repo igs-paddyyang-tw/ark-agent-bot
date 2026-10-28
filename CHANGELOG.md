@@ -13,6 +13,36 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.5.15 (2026-10-28)
+
+### ♻️ M1+M2+M3 結構重構
+
+**M1：tools 合併**
+- `tools/` → `llm/tools/file_*.py`（file_registry、file_handlers、file_cleanup）
+- 規則明確化：LLM tool（Gemini function-calling）放 `llm/tools/`
+
+**M2：頂層單檔歸位**
+- `publish.py` → `bot/publish.py`
+- `preflight.py` → `server/preflight.py`
+- `skills_verify.py` → `skills/verify.py`
+- 刪死碼：`updater.py`、`version_check.py`（0 消費者）
+- 頂層只剩基建（config/paths/access/logging_config）
+
+**M3：ark-agent-cli 定版**
+- `vendor/ark_agent_cli/` → `agent/scripts/`（正式 Python 模組）
+- 消滅 `ensure_on_path()` sys.path hack
+- 刪 `vendor/` + `scripts/sync_vendor_skill.py`
+- **skill 與 bot 各自獨立演進**：bot 的 CLI 能力是原生的，skill 回歸對話層工具
+
+**Deprecation（下個 minor 移除）**
+- `ark_bot_agent.tools` → `ark_bot_agent.llm.tools.*`（有 re-export + warning）
+- `ark_bot_agent.publish` → `ark_bot_agent.bot.publish`
+- `ark_bot_agent.preflight` → `ark_bot_agent.server.preflight`
+- `ark_bot_agent.skills_verify` → `ark_bot_agent.skills.verify`
+
+**Breaking**
+- `ark_bot_agent.vendor` 已刪除（改用 `agent.scripts`）
+
 ## 1.5.14 (2026-10-28)
 
 ### 🐛 ark-agent-cli vendor 進 wheel（修消費端靜默 fallback）
