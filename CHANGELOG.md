@@ -13,6 +13,20 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.5.14 (2026-10-28)
+
+### 🐛 ark-agent-cli vendor 進 wheel（修消費端靜默 fallback）
+
+- 根因：1.5.13 的 roster/envelope 用 `Path(__file__).parents[3]/.kiro/skills/...`
+  指開發樹，消費端裝 wheel 後路徑不存在 → 靜默 fallback 舊路徑，功能等於沒上
+  （BRAIN 判準 2：看不見的失敗）
+- 修法：skill scripts vendor 進 `src/ark_bot_agent/vendor/ark_agent_cli/`，
+  納入 package-data 隨 wheel 出貨（已驗 wheel 內含 7 檔）
+- `vendor/__init__.py` 提供 `ensure_on_path()` / `ark_agent_cli_scripts_dir()`，
+  handlers/router 改用它（wheel 與開發樹都成立）
+- `scripts/sync_vendor_skill.py`：上游 skill 更新 → 同步覆蓋 vendor 副本（--check 驗一致性）
+- 守門 `test_vendor_skill.py`（4 項）：vendor 可 import、與 skill 逐位元組一致、package-data 涵蓋
+
 ## 1.5.13 (2026-10-27)
 
 ### ✨ ark-agent-cli v2.1.0 整合
