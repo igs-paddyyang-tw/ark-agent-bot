@@ -13,6 +13,16 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.5.13 (2026-10-27)
+
+### ✨ ark-agent-cli v2.1.0 整合
+
+- 更新 `.kiro/skills/ark-agent-cli` 至 v2.1.0（executor form、roster 選角路由、Windows 修復）
+- `resolve_agent`：新增 roster fallback，從 `agents.yaml` 的 dispatchable agent 解析 codename/name，
+  自動補 cwd，不再依賴 config.agents 靜態清單
+- `/publish` 改用 envelope：優先走 `agent_cli.py` 拿 `data.text`（結構化），
+  fallback 保留舊 `agent_cli_chat` 路徑（ark-agent-cli 不可用時不壞）
+
 ## 1.5.12 (2026-10-27)
 
 ### 🐛 chat.enabled=False 完整修補（P1 漏洞 + 單一出口）
