@@ -13,6 +13,15 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.5.11 (2026-10-27)
+
+### 🐛 chat.enabled=False 時隱藏 TG 選單 /mode + 阻擋指令執行
+
+- `main.py` BOT_COMMANDS 改為動態函式 `_build_bot_commands()`：
+  啟動時讀 `chat.enabled`，False 時不注冊 /mode，TG 左下角選單不顯示
+- `cmd_mode`：chat.enabled=False 時回覆「此部署為純 Agent 模式，無需切換」，阻止執行
+- 同步修正 /publish 選單說明「🚀 發布上線」→「📝 收尾更新」
+
 ## 1.5.10 (2026-10-27)
 
 ### 🐛 /publish 語意全面統一（補知識庫）
