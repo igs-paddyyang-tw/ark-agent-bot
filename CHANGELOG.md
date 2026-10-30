@@ -13,6 +13,19 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.5.20 (2026-10-30)
+
+### 📊 claude 用量可見、計入 team 預算 —— S2（plan P2）
+
+- **claude 改 `--output-format json`**：答覆直接取 `result`（不再從自由文字猜），並去掉結尾 team 協定的 `[DONE] summary=` 行；解析在 `_spawn_once` 單一出口（常駐池、fallback、session 釘選都經過）。`is_error` → rc 至少 1、訊息併入 stderr（resume 降級判斷不受影響）；解析失敗退回原始輸出
+- **用量帳本** `state/usage.jsonl`：每次 claude 呼叫一筆，只存數字（agent、模型、token、換算 USD、是否解析成功），不存 prompt／回覆
+- **同步 team `cost_guard`**：背景 `POST /api/costs/spend`（instance `bot:<agent>`），team 的每日上限因此涵蓋 bot 用量（報告 F-2：原本兩本帳互不相加）；team 不可達只記本地
+- `/status` 顯示今日各 backend 呼叫數與換算 USD
+- router 的輸出清理也帶 backend（原本只有 handlers 帶，報告 M-5）
+- 回滾：env `ARK_BOT_CLAUDE_JSON=0`
+- 實測：@admin 一次 fresh 呼叫 0.27 USD（cache 建立 6.6 萬 token），team `/api/costs` 出現 `bot:admin` 並計入當日總額
+- 守門 `tests/ark_bot_agent/test_cli_alignment_p2.py`（16 項；接線／`[DONE]`／team 同步三組反證）
+
 ## 1.5.19 (2026-10-29)
 
 ### 🔧 呼叫 agent CLI 對齊 ark-agent-cli 2.4 —— S1 餵法與權限（plan P1）
