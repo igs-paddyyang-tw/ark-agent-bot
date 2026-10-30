@@ -13,6 +13,47 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.5.19 (2026-10-29)
+
+### 🔧 呼叫 agent CLI 對齊 ark-agent-cli 2.4 —— S1 餵法與權限（plan P1）
+
+- **claude 的 prompt 改走 stdin**（`_spawn_once` 單一出口）：argv 不再含 prompt（Windows 32,767 字元上限、`ps` 看得到 SOUL／MEMORY）；60 K 字元實測通過
+- **不再帶 team 產生的 `--mcp-config`**：那份 mcp.json 的身分是 team agent，bot 呼叫因此拿到 team 的 `reply`／`delegate_task`（實測 @leader 經 team 另發一份）。bot 回覆走 stdout，不需要 team 工具
+- **`agents.yaml` 新增 `access: read-only｜workspace｜full`**（預設 full，旗標與 1.5.18 逐字相同）；收斂時取 skill 2.4 映射表。claude 的 full 固定 `bypassPermissions`（不取 skill 的 `--dangerously-skip-permissions`）。寫錯值 → 設定錯誤，不降成 full
+- **claude 呼叫前自建 `.claude/skills → ../.kiro/skills`**：原本依賴 team 先啟動過該 agent，lazy worker（如 coder）沒有技能
+- **agent 目錄有 `CLAUDE.md` 時，claude 不再重複注入 SOUL／MEMORY**（claude 自己會載入；agy 照舊）
+- **fresh／fallback 路徑改用解析後的模型**：原本只在 agent 自寫 model 時才帶 `--model`，否則用帳號預設 —— 實測 `backend.model: sonnet` 的 admin 在常駐池是 Sonnet、fresh 路徑是 **Opus**
+- publish 的 timeout 改走 `_resolve_timeout`（原寫死 120／130）
+- 套件路徑掃描器把 vendor 的 `agent/scripts/` 列為目錄層排除（skill 的 env 是 skill 契約；逐行標記會破壞同步守門），順帶清掉一個既有紅燈
+- 守門 `tests/ark_bot_agent/test_cli_alignment_p1.py`（13 項；stdin／權限／連結／模型四組反證）
+
+### 🔧 vendor ark-agent-cli 升 2.4.0 ＋ publish 委派 admin 從未成功的修正（plan P0）
+
+- `agent/scripts/` 換成 ark-agent-cli 2.4.0（只改 import 為套件路徑；`fake_backend.py` 不 vendor —— 模組層讀 stdin）；
+  守門 `test_vendor_skill_sync.py` 逐檔比對 skill（skill 不在時明確 skip）
+- publish 的 envelope 呼叫：prompt 改走 stdin；`--agent`／`--cwd` 改依 agents.yaml 的 admin `dir` 定位。
+  原本寫死 `--agent admin --cwd <home>`，home 沒有該設定 → kiro exit 4、零輸出，**從 1.5.13 起每次都落到 fallback**
+  （2.1.0 與 2.4.0 腳本實測皆同）。守門 `test_publish_agent_target.py`
+- 設計：`docs/designs/2026-10-29-bot-agent-cli-skill-alignment-design.md`、plan `docs/plans/bot-agent-cli-skill-alignment-plan.md`
+
+### 🐛 claude backend 的答覆被 `[DONE] summary=` 蓋掉
+
+- `extract_final_reply` 遇到 `[DONE]` 一律只留摘要（kiro 前提：正文已用 `reply()` 送出）；claude 在 bot 路徑沒送正文
+  → TG 只收到「已回報模型與工作目錄」。新增 `backend` 參數：claude 回正文、去掉 `[DONE]` 行，正文空才用摘要；kiro 行為不變
+- handlers 兩條 agent 回覆路徑把 `CliResult.backend` 傳入 `_clean_output`
+- 守門 `tests/ark_bot_agent/test_claude_reply_keeps_body.py`（用 2026-10-29 實際輸出）；反證（拿掉 claude 分支）2 項紅
+
+### 🐛 `@admin …` 直送一律回「出了點狀況」
+
+- `_handle_message` 的 agent 模式分支有一行多餘的 `from ark_bot_agent.agent.cli import agent_cli_chat`，
+  Python 因此把整個函式的 `agent_cli_chat` 當區域變數 → 較前面的 @mention 直送分支拋 `UnboundLocalError`
+  （2026-08-17 平移時就存在；CLI 可用時 `@任何 agent` 都會失敗）。刪掉該行，改用模組層匯入
+- 守門 `tests/ark_bot_agent/test_handlers_no_shadow_import.py`：函式內「先用後區域 import」即紅；反證（加回該行）會轉紅
+
+### 📝 說明修正
+
+- `paths.get_knowledge_dir` 的說明拿掉已作廢的 `knowledge/raw/memory-archive/`：記憶歸檔在 `memory/archive/`，程式本來就不讀寫舊路徑
+
 ## 1.5.18 (2026-10-28)
 
 ### 🔧 /publish 路徑/token 走 .env + 支援 memory/daily（對齊 team 1.13.7）
