@@ -13,6 +13,23 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.5.22 (2026-10-30)
+
+### 🐛 consolidate 把 LLM 錯誤訊息當蒸餾結果覆寫 memory.md（🔴 高）
+
+- 病例（1.5.16 實測）：`GEMINI_API_KEY` 有值但失效 → provider 回 `LLMResponse(text="⚠️ Gemini API 錯誤: …")` 而非 None →
+  consolidate 只檢查 `result is None` → memory.md 四分節被換成一行錯誤訊息、git commit、回 `updated`（每日自動蒸餾靜默清掉持久事實）
+- 修法一：`LLMResponse` 新增 `error`，Gemini／OpenAI／Anthropic 失敗都填；`simple_chat` 見到 `error` 回 None（`text` 照舊放錯誤訊息，對話介面顯示不變）
+- 修法二：consolidate 寫檔前防線 —— 以 ⚠️／「API 錯誤」開頭、或原本有分節而結果一個都沒有 → `error`，不寫、不 commit
+- 順帶受益：`memory/recommend.py` 不再可能把錯誤訊息存成 SKILL 草稿
+- 實測：無效 key 跑 consolidate → `status: error`、memory.md 不變。守門 `test_consolidate_llm_error.py`（8 項；兩道防線各自反證）
+
+### 🐛 vendor ark-agent-cli 升 2.4.2（上游修正 U-1～U-5）
+
+- `agent/scripts/` 重新 vendor 自 ark-agent-skills `5b5fb03`（列車 r21）：worker 對清單型計數容錯（U-1）、例外路徑走 finalize 補 result.md／inbox／notify（U-2）、claude 背景 job 取 json 用量（U-3）、`SKILL_VERSION` 與 SKILL.md 同步（U-4）、協定 1.2 明寫只讀時以 JSON 印 checkpoint（U-5）
+- 實機：coder 背景任務 done、TG 推送，**用量不再為 0**（404 tokens、0.26 USD）；bot 的 task.md 緩解與 status 補抓保留（與 2.4.2 不衝突）
+- 交接紀錄：`kiro-cli/docs/plans/ark-agent-cli-2.4.1-fixes-plan.md`
+
 ## 1.5.21 (2026-10-30)
 
 ### 🧵 背景任務 `/job` —— S3（plan P3）
