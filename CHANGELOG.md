@@ -13,6 +13,21 @@
 > 頂部曾有 0.10.1 / 0.7.2 的重複摘要（`ccac2b1` 補條目時錯插）+ 0.11.5 掉標題，
 > 2026-08-25 已重排修正（完整版在下方各自版號處）。
 
+## 1.5.21 (2026-10-30)
+
+### 🧵 背景任務 `/job` —— S3（plan P3）
+
+- **`/job <agent> <要做的事>`**：薄包 ark-agent-cli 2.4 的 `agent_spawn`（detached worker、分段＋checkpoint、狀態在檔案），**立刻回 job_id 不等**；預設 `--access read-only`、`--idle-segments 3`、上限 60 分鐘；派給誰由 `--route agent:<id>` 依 agents.yaml 驗證
+- **終態自動推回原 chat**：worker 的 `--notify-cmd` 執行 `python -m ark_bot_agent.notify --job {job_id} --chat <id>`（bot 進程不在也能推）；token 只從 `<home>/.env` 讀
+- **保底巡檢**：PTB JobQueue 每 10 分鐘，inbox ＋ 對照表裡未推送的 job 逐一查 status（skill 2.4.0 worker 例外路徑不寫 inbox，只看 inbox 會漏報）
+- `/job list｜status｜result｜cancel`；`list` 只列本 bot 發起的 job（job 目錄全機共用），另唯讀列出同 home 的 team 任務板未結案任務
+- 使用者文字只寫進 task.md 檔，不進任何 shell 指令（守門）
+- 實測：coder（claude／sonnet）背景任務 1 段 done、TG 收到結果；第一次因 sub-agent 把 `actions` 寫成清單而 worker 崩潰 → task 範本明寫整數，上游修正交接 `kiro-cli/docs/plans/ark-agent-cli-2.4.1-fixes-plan.md`
+- **worker 經 `systemd-run --user` 起成獨立 transient unit**（`KillMode=process`、`--collect`）：實測直接 detach 的 worker 在兩種情境都被殺（`worker_died`）—— 管家在 kiro-cli 裡派工時 kiro 一輪結束會收掉所有後代進程；bot 是 systemd service，重啟時整個 cgroup 一起停。沒有 systemd-run 或 `ARK_BOT_JOBS_SYSTEMD=0` → 直接執行
+- **管家可自己派工**：`python -m ark_bot_agent.agent.jobs spawn|status|result|cancel|list`（`--chat` 預設 `access.admin_chat_ids[0]`）；paddy 部署的 `CODE.md` 加「長任務走背景任務」規則（實測管家派 qa → done → TG 收到）
+- task.md 明寫：checkpoint 兩個計數欄是整數、只讀時把 checkpoint 當 JSON 印在輸出最後（上游 U-1／U-5 的 bot 側緩解）
+- 守門 `tests/ark_bot_agent/test_cli_alignment_p3.py`（15 項，含經 systemd-run 真的 detach worker 的端到端；access／list 過濾／inbox 去重／崩潰補抓／systemd 前綴五組反證）
+
 ## 1.5.20 (2026-10-30)
 
 ### 📊 claude 用量可見、計入 team 預算 —— S2（plan P2）
